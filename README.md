@@ -2,7 +2,7 @@
 
 CKT-WAM is a parameter-efficient framework for transferring knowledge between **World Action Models (WAMs)**. Instead of imitating the teacher's output logits or aligning every hidden state, CKT-WAM extracts an intermediate representation from a frozen **teacher WAM** and delivers it to a frozen **student WAM** as a compact, *transferable context*.
 
-Only the CKT Adapter Bank (≈ O(10⁷) parameters) is trained; both WAMs stay frozen. The denoising objective of the student and the auxiliary load-balancing loss are the only supervision signals.
+Only the CKT Module (≈ 187.4M parameters) is trained; both WAMs stay frozen. The denoising objective of the student and the auxiliary load-balancing loss are the only supervision signals.
 
 ---
 

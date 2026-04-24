@@ -177,7 +177,8 @@ teacher = [
 ]
 
 [project.scripts]
-ckt-train = "ckt_wam.scripts.train_ckt:train"
+ckt-train = "ckt_wam.scripts.train_ckt:main"
+ckt-eval-libero = "ckt_wam.experiments.libero.run_libero_ckt_eval:main"
 
 [tool.hatch.build.targets.sdist]
 packages = ["ckt_wam"]

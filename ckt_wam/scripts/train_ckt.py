@@ -703,6 +703,12 @@ def parse_args() -> TrainConfig:
     return config
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Zero-argument entry point used by both ``python -m`` and the
+    ``ckt-train`` console script."""
     config = parse_args()
     train(config)
+
+
+if __name__ == "__main__":
+    main()
