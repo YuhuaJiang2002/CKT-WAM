@@ -1,0 +1,252 @@
+# =============================================================================
+# CKT-WAM: Parameter Efficient Context Knowledge Transfer Between World
+# Action Models
+#
+# This pyproject.toml merges the runtime dependencies of the student WAM
+# backend (Cosmos-Policy-2B) and the teacher WAM backend (DreamZero-14B),
+# and exposes the CKT transfer module, training script, and LIBERO
+# evaluation entry point as an installable Python package ``ckt_wam``.
+# =============================================================================
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ckt-wam"
+version = "1.0.0"
+authors = [
+    { name = "Anonymous Authors" },
+]
+description = "CKT-WAM: Parameter Efficient Context Knowledge Transfer Between World Action Models"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# -----------------------------------------------------------------------------
+# Runtime dependencies
+# -----------------------------------------------------------------------------
+# NOTE:
+#   - The student WAM backend (``cosmos-policy`` + ``cosmos-predict2``) and
+#     the teacher WAM backend (``dreamzero``) are expected to be installed
+#     as editable source checkouts alongside CKT-WAM (see the README for
+#     the recommended ``third_party/`` layout).  They are therefore NOT
+#     listed as direct PyPI dependencies below; CKT-WAM only depends on
+#     the libraries needed by its own transfer module and training /
+#     evaluation entry points.
+# -----------------------------------------------------------------------------
+dependencies = [
+    # --- Core deep-learning stack ---
+    "torch>=2.6.0",
+    "torchvision>=0.20.0",
+    "einops>=0.8.0",
+
+    # --- Data processing / I/O ---
+    "numpy>=1.26.0",
+    "pillow>=11.0.0",
+    "h5py>=3.0.0",
+    "imageio[pyav,ffmpeg]>=2.30.0",
+    "opencv-contrib-python>=4.10.0",
+    "opencv-python>=4.8.0",
+    "av>=15.0.0",
+    "cloudpickle>=3.0.0",
+    "decord2",
+
+    # --- Configuration / utilities ---
+    "attrs>=25.0.0",
+    "omegaconf>=2.3.0",
+    "hydra-core>=1.3.2",
+    "draccus>=0.11.0",
+    "tyro",
+    "loguru>=0.7.2",
+    "tqdm>=4.66.0",
+    "pyyaml>=6.0.0",
+    "termcolor",
+    "click",
+    "lark",
+    "ftfy",
+    "msgpack",
+    "msgpack-numpy",
+    "dm_tree",
+
+    # --- Experiment tracking ---
+    "wandb>=0.22.0",
+
+    # --- Robot simulation environments (LIBERO / RoboCasa / ALOHA) ---
+    "robosuite>=1.5.0",
+    "gymnasium>=1.2.0",
+    "mujoco>=3.2.0",
+    "tianshou==0.5.1",
+
+    # --- API / serving ---
+    "fastapi>=0.120.0",
+    "uvicorn>=0.30.0",
+    "json-numpy>=2.0.0",
+    "flask",
+    "flask_socketio",
+    "python-socketio>=5.13.0",
+    "pyzmq",
+    "redis",
+
+    # --- Text encoders & tokenizers ---
+    "transformers==4.51.3",
+    "sentencepiece>=0.2.0",
+    "tiktoken",
+
+    # --- Scientific computing ---
+    "scipy>=1.15.3",
+    "matplotlib",
+    "pandas",
+    "albumentations==1.4.18",
+
+    # --- Diffusion / generative backbones ---
+    "diffusers>=0.30.2",
+
+    # --- Distributed and storage helpers ---
+    "ray[default]>=2.47.1",
+    "lmdb",
+    "openai",
+    "huggingface_hub",
+    "multi-storage-client[boto3,msal,observability-otel]==0.33.0",
+
+    # --- Robotics utilities ---
+    "pin",
+    "pin-pink",
+    "meshcat",
+    "meshcat-shapes",
+    "timm",
+    "pyttsx3",
+    "pygame",
+    "sshkeyboard",
+    "rerun-sdk==0.21.0",
+    "openpi-client==0.1.1",
+    "peft==0.5.0",
+
+    # --- Platform-specific ---
+    "PyQt6; platform_machine != 'aarch64'",
+    "evdev; sys_platform == 'linux'",
+    "pybullet; sys_platform == 'linux'",
+]
+
+[project.optional-dependencies]
+# Developer dependencies (tests, linting).
+dev = [
+    "pytest>=8.4.2",
+    "ruff==0.12.7",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.7.1",
+]
+
+# CUDA-12.8 / PyTorch-2.7 GPU stack (mirrors the cosmos-policy ``cu128`` extra).
+cu128 = [
+    "flash-attn==2.7.3",
+    "transformer-engine==2.2.0",
+    "natten==0.21.0",
+    "xformers",
+]
+
+# CUDA-13.0 / PyTorch-2.9 GPU stack (mirrors the cosmos-policy ``cu130`` extra).
+cu130 = [
+    "flash-attn==2.7.4.post1",
+    "transformer-engine==2.8.0",
+    "natten==0.21.0",
+    "xformers",
+]
+
+# Optional dependencies required for the teacher WAM (DreamZero-14B) only.
+# Enable with ``pip install -e ".[teacher]"`` if you want to load the
+# teacher in-process instead of using pre-extracted hidden states.
+teacher = [
+    "deepspeed",
+    "nvidia-modelopt",
+    "nvidia-modelopt-core",
+    "tensorrt",
+    "datasets==3.6.0",
+    "imageio-ffmpeg",
+]
+
+[project.scripts]
+ckt-train = "ckt_wam.scripts.train_ckt:train"
+
+[tool.hatch.build.targets.sdist]
+packages = ["ckt_wam"]
+exclude = [
+    "__pycache__",
+    "*.pyc",
+    "*_test.py",
+    "outputs/",
+    "logs/",
+    "third_party/",
+    ".venv/",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ckt_wam"]
+exclude = [
+    "__pycache__",
+    "*.pyc",
+    "*_test.py",
+    "outputs/",
+    "logs/",
+    "third_party/",
+    ".venv/",
+]
+
+[tool.uv]
+conflicts = [
+    [{ extra = "cu128" }, { extra = "cu130" }],
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "W",  # pycodestyle warnings
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "E741",  # ambiguous variable name
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ckt_wam"]
+
+[tool.coverage.run]
+parallel = true
+concurrency = ["thread", "multiprocessing"]
+source = ["ckt_wam"]
+sigterm = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@overload",
+]

@@ -1,0 +1,71 @@
+# -----------------------------------------------------------------------------
+# CKT-WAM runtime requirements (minimal plain-pip mirror of pyproject.toml).
+#
+# For the full install (with CUDA-specific GPU libraries) use
+#     pip install -e ".[cu128]"   # CUDA 12.8 / PyTorch 2.7
+# or
+#     pip install -e ".[cu130]"   # CUDA 13.0 / PyTorch 2.9
+# See README.md for detailed instructions.
+# -----------------------------------------------------------------------------
+
+# Core deep learning
+torch>=2.6.0
+torchvision>=0.20.0
+einops>=0.8.0
+
+# Data / I/O
+numpy>=1.26.0
+pillow>=11.0.0
+h5py>=3.0.0
+imageio[pyav,ffmpeg]>=2.30.0
+opencv-contrib-python>=4.10.0
+opencv-python>=4.8.0
+av>=15.0.0
+cloudpickle>=3.0.0
+decord2
+
+# Config / utilities
+attrs>=25.0.0
+omegaconf>=2.3.0
+hydra-core>=1.3.2
+draccus>=0.11.0
+tyro
+loguru>=0.7.2
+tqdm>=4.66.0
+pyyaml>=6.0.0
+termcolor
+click
+lark
+ftfy
+
+# Experiment tracking
+wandb>=0.22.0
+
+# Simulation environments
+robosuite>=1.5.0
+gymnasium>=1.2.0
+mujoco>=3.2.0
+tianshou==0.5.1
+
+# API / serving
+fastapi>=0.120.0
+uvicorn>=0.30.0
+json-numpy>=2.0.0
+
+# Text encoders / tokenizers
+transformers==4.51.3
+sentencepiece>=0.2.0
+tiktoken
+
+# Scientific computing
+scipy>=1.15.3
+matplotlib
+pandas
+albumentations==1.4.18
+
+# Generative backbones
+diffusers>=0.30.2
+
+# Misc
+huggingface_hub
+peft==0.5.0
