@@ -33,8 +33,6 @@ CKT-WAM/
 └── README.md
 ```
 
-All scripts resolve their paths via environment variables — **no absolute path is hard-coded anywhere** in the repository.
-
 ---
 
 ## 2. Environment setup
