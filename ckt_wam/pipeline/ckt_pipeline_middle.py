@@ -9,10 +9,15 @@ teacher layer.
 
 The extracted hidden states ``H_T : [B, N, d_tea]`` are passed through the
 ``AdapterBank`` to produce the compact transferred context
-``C_A : [B, 2K, d_stu]`` (Eq. (10)), which is injected into the student
-WAM's conditioning sequence through a forward hook on the student's text
-embedding module.  Both teacher and student backbones remain frozen; only
-the adapter bank is optimized.
+``C_A : [B, 2K, d_stu]`` (Eq. (10)).  A forward hook on the student's
+text-embedding module then assembles the augmented conditioning sequence
+
+    ``E_tilde = [ E_t ; <SEP> ; C_A ] in R^{B x (L_t + 2K + 1) x d_stu}``  (Eq. (11))
+
+where ``E_t`` is the student's original textual embedding, ``<SEP>`` is a
+learnable separator stored on the adapter bank, and ``C_A`` is the
+teacher-derived context.  Both teacher and student backbones remain frozen;
+only the adapter bank (including the ``<SEP>`` token) is optimized.
 """
 
 from __future__ import annotations
@@ -164,12 +169,14 @@ class CKTPipelineMiddle(nn.Module):
     Components::
 
         Teacher WAM (frozen)
-            -> TeacherMiddleLayerFeatureExtractor -> H_T  [B, N, d_tea]
+            -> TeacherMiddleLayerFeatureExtractor -> H_T   [B, N, d_tea]
         AdapterBank (trainable)
-            -> (C_g, C_s) -> C_A                   [B, 2K, d_stu]
+            -> (C_g, C_s) -> C_A                           [B, 2K, d_stu]
+            -> learnable <SEP> token                       [1, 1, d_stu]
         Student WAM (frozen)
-            -> conditioning tokens augmented with C_A via a forward hook on
-               the student's text_embedding module.
+            -> conditioning sequence assembled by a forward hook on the
+               student's text_embedding module:
+                   E_tilde = [ E_t ; <SEP> ; C_A ]         (Eq. (11))
 
     During training, only the adapter bank is optimized; both teacher and
     student backbones remain frozen.  At inference time the teacher is
@@ -216,10 +223,27 @@ class CKTPipelineMiddle(nn.Module):
         input: Any,
         output: torch.Tensor,
     ) -> torch.Tensor:
-        """Concatenate ``C_A`` to the student conditioning tokens (Eq. (11))."""
-        if self._context_to_inject is not None:
-            return torch.cat([self._context_to_inject, output], dim=1)
-        return output
+        """
+        Build the augmented conditioning sequence (Eq. (11))::
+
+            E_tilde = [ E_t ; <SEP> ; C_A ]
+
+        where ``E_t`` is the student's original textual embedding output,
+        ``<SEP>`` is the learnable separator stored on the adapter bank,
+        and ``C_A`` is the transferred context cached in
+        ``self._context_to_inject``.
+        """
+        if self._context_to_inject is None:
+            return output
+
+        B = output.shape[0]
+        sep = self.adapter_bank.sep_token.expand(B, -1, -1).to(
+            dtype=output.dtype, device=output.device
+        )
+        c_a = self._context_to_inject.to(
+            dtype=output.dtype, device=output.device
+        )
+        return torch.cat([output, sep, c_a], dim=1)
 
     def training_step(
         self,

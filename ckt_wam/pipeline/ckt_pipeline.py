@@ -7,6 +7,13 @@ retained for ablation studies (Section "Method"): the CKT-WAM paper
 reports that an intermediate teacher layer (``l^* = 20``) provides a
 better cost--utility trade-off than relying on the deepest layer, which
 this pipeline mirrors.
+
+Conditioning injection follows the same recipe as the middle-layer
+pipeline: a forward hook on the student's text-embedding module assembles
+
+    ``E_tilde = [ E_t ; <SEP> ; C_A ] in R^{B x (L_t + 2K + 1) x d_stu}``  (Eq. (11))
+
+where ``<SEP>`` is a learnable separator stored on the adapter bank.
 """
 
 from __future__ import annotations
@@ -170,9 +177,27 @@ class CKTPipeline(nn.Module):
         input: Any,
         output: torch.Tensor,
     ) -> torch.Tensor:
-        if self._context_to_inject is not None:
-            return torch.cat([self._context_to_inject, output], dim=1)
-        return output
+        """
+        Build the augmented conditioning sequence (Eq. (11))::
+
+            E_tilde = [ E_t ; <SEP> ; C_A ]
+
+        where ``E_t`` is the student's original textual embedding output,
+        ``<SEP>`` is the learnable separator stored on the adapter bank,
+        and ``C_A`` is the transferred context cached in
+        ``self._context_to_inject``.
+        """
+        if self._context_to_inject is None:
+            return output
+
+        B = output.shape[0]
+        sep = self.adapter_bank.sep_token.expand(B, -1, -1).to(
+            dtype=output.dtype, device=output.device
+        )
+        c_a = self._context_to_inject.to(
+            dtype=output.dtype, device=output.device
+        )
+        return torch.cat([output, sep, c_a], dim=1)
 
     def training_step(
         self,

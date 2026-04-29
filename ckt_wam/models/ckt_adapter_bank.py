@@ -176,15 +176,26 @@ class AdapterBank(nn.Module):
       2) ``M`` **specialized adapters** that model input-dependent transfer
          patterns;
       3) a lightweight **router** that selects the top-k specialized branches
-         per instance.
+         per instance;
+      4) a learnable **separator token** ``<SEP>`` (one vector in the
+         student's embedding space) that demarcates the original textual
+         conditioning ``E_t`` from the transferred context ``C_A`` when the
+         pipeline assembles
+         ``E_tilde = [ E_t ; <SEP> ; C_A ]``      (Eq. (11)).
 
     Given teacher hidden states ``H_T : [B, N, d_tea]``, the module returns
     the transferred context
 
-        ``C_A = [ C_g ; C_s ] in R^{B x 2K x d_stu}``     (Eq. (10))
+        ``C_A = [ C_g ; C_s ] in R^{B x (K_g + K_s) x d_stu}``     (Eq. (10))
 
     together with the full routing probabilities used by the load-balancing
-    auxiliary loss.
+    auxiliary loss.  ``K_g = K_s = num_adapter_output_tokens`` in this
+    implementation, so ``C_A`` has shape ``[B, 2K, d_stu]``.
+
+    The separator token is exposed as ``self.sep_token`` (shape
+    ``[1, 1, d_stu]``) so that the pipeline-level injection hook can splice
+    it between ``E_t`` and ``C_A`` without modifying the frozen student
+    backbone.
     """
 
     def __init__(
@@ -201,6 +212,7 @@ class AdapterBank(nn.Module):
         super().__init__()
         self.num_specialized_experts = num_specialized_experts
         self.top_k = top_k
+        self.student_hidden_dim = student_hidden_dim
 
         adapter_cfg = AdapterConfig(
             teacher_hidden_dim=teacher_hidden_dim,
@@ -221,6 +233,10 @@ class AdapterBank(nn.Module):
             num_experts=num_specialized_experts,
             top_k=top_k,
             gating_hidden_dim=gating_hidden_dim,
+        )
+
+        self.sep_token = nn.Parameter(
+            torch.randn(1, 1, student_hidden_dim) * 0.02
         )
 
     def forward(
